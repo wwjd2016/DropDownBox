@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<title></title>
+	<style>
+		li{list-style: none}
+		*{
+			margin: 0;
+			padding: 0;
+		}
+		input{
+			width: 200px;
+			height: 20px;
+			border-radius: 4px;
+			border: 1px solid #d5d5d5;
+			padding: 5px;
+		}
+		.wrap{
+			width: 500px;
+			margin: 100px
+		}
+		.selectListWrap{
+			background: #fff;
+			border-radius: 7px;
+			border: 1px solid #e5e5e5;
+		}
+		.selectListWrap li{
+			cursor: pointer;
+		}
+		.selectList, .selectPageLocation {
+			margin: 0;
+		}
+		.selectList li{
+			color: rgba(0,0,0,.65);
+			transition: background .3s ease;
+			padding: 5px 10px;
+		}
+		.selectList li:hover{
+			background: #e6f7ff;
+		}
+
+		.selectPageLocation {
+			width: 100%;
+			overflow: hidden;
+			padding: 10px
+		}
+		.selectPageLocation li {
+			font-size: 12px;
+			float: left;
+			width: 18px;
+			height: 18px;
+			text-align: center;
+			line-height: 18px;
+			overflow: hidden;
+			background: #fff;
+			margin-right: 2px;
+			color: #444
+		}
+		.selectPageLocation .pageActive{
+			color: #fff;
+			background: #337ab7;
+			border-radius: 100%;
+		}
+	</style>
+</head>
+<body>
+	<div class="wrap">
+		<input type="text" class="form-control" id="dropDownBox" placeholder="下拉输入框">
+	</div>
+	<script type="text/javascript">
+		// 输入响应onchange事件 动态筛选？
+		// 点击的时候也会响应onchange事件
+		// 如何区分
+		var DropDownBox = function({id, dataSource, pageSize=2, width=200}) {
+			this.id = id;
+			this.width = width
+			//数据
+			this.dataSource = dataSource;
+			this.dataList = [];	
+
+			//分页数据
+			this.page = 1;
+			this.pageSize = pageSize;
+			this.pageCount = Math.ceil(dataSource.length / pageSize);
+
+			// dom
+			this.inputEle = document.getElementById(id);
+			this.listWrap = null;
+			this.list = null;
+			this.pageLocation = null;
+
+			// input聚焦事件监听,初始化dom
+			this._addEventFocus()
+		}
+		DropDownBox.prototype = {
+			constructor: DropDownBox,
+			_initDom: function() {
+				if (this.listWrap) {
+					this._adjustPosition()
+					this.listWrap.style.display = 'block'
+					// 更新数据
+				} else {
+					this._updataPageAndData(1);
+					var wrap = this._initWrapper()
+					var listwrap = this._initContentWrapper()
+					var list = this._generateList();
+					var pageLocation = this._generatePageLocation();
+					this._adjustPosition()
+					listwrap.appendChild(list);
+					listwrap.appendChild(pageLocation);
+					wrap.appendChild(listwrap);
+					document.body.appendChild(wrap);
+					// 只需执行一次监听事件
+					this._addEventBlur()
+					this._addEventItemClick()
+					this._addEventPageClick()
+				}
+			},
+			_initWrapper: function() {
+				var wrap = document.createElement('div')
+				wrap.style.position = 'absolute';
+				wrap.style.top = '0px';
+				wrap.style.left = '0px';
+				wrap.style.width = '100%';
+				return wrap;
+			},
+			_initContentWrapper: function() {
+				var listWrap = document.createElement('div')
+				listWrap.setAttribute('class', 'selectListWrap')
+				listWrap.style.position = 'absolute';
+				listWrap.style.width = this.width + 'px';
+				this.listWrap = listWrap
+				return listWrap;
+			},
+			_generateLi: function(text) {
+				var li = document.createElement('li')
+				li.innerHTML = text
+				return li;
+			},
+			_generateList: function() {
+				var list = document.createElement('ul');
+				list.setAttribute('class', 'selectList')
+				this.list = list;
+				this._generateDataItems()
+				return list;
+			},
+			_generateDataItems: function() {
+				var _this = this;
+				this.dataList.map(function(text){
+					_this.list.appendChild(_this._generateLi(text))
+				})
+			},
+			_generatePageLocation: function() {
+				var pageLocation = document.createElement('ul');
+				pageLocation.setAttribute('class', 'selectPageLocation')
+				this.pageLocation = pageLocation;
+				this._generatePagerItems()
+				return pageLocation;
+			},
+			_generatePagerItems: function() {
+				for (var i = 0; i < this.pageCount; i++) {
+					var pager = this._generateLi(i + 1 + '');
+					if(i === 0) {
+						pager.setAttribute('class', 'pageActive')
+					}
+					this.pageLocation.appendChild(pager)
+				}
+			},
+			_adjustPosition: function() {
+				var top = this.inputEle.offsetTop
+				var left = this.inputEle.offsetLeft
+				var h = this.inputEle.offsetHeight
+				this.listWrap.style.top = top + h + 5 + 'px'
+				this.listWrap.style.left = left + 'px'
+			},
+			_updataPageAndData: function(page) {
+				this.page = page;
+				var pageStart = (page-1)*this.pageSize;
+				var pageEnd = page*this.pageSize;
+				this.dataList = this.dataSource.slice(pageStart, pageEnd);
+			},
+			_addEventFocus: function() {
+				var _this = this;
+				_this.inputEle.addEventListener('focus', function() {
+					_this._initDom();
+				})
+			},
+			_addEventBlur: function() {
+				var _this = this;
+			  document.addEventListener('click', function(e) {
+			  	var target = e.target;
+			  	if(
+			  		!_this.listWrap.contains(target) &&
+			  		target !== _this.inputEle
+			  	) {
+			  		_this.listWrap.style.display = 'none'
+			  	}
+				})
+			},
+			_addEventItemClick: function() {
+				var _this = this;
+				this.list.addEventListener('click', function(e) {
+					var target = e.target;
+					if(target.tagName.toLocaleLowerCase() === 'li') {
+						_this.inputEle.value = target.innerHTML
+						_this.listWrap.style.display = 'none'
+					}
+				})
+			},
+			_addEventPageClick: function() {
+				var _this = this;
+				this.pageLocation.addEventListener('click', function(e) {
+					var target = e.target;
+					if(
+						target.tagName.toLocaleLowerCase() === 'li' &&
+						parseInt(target.innerHTML) !== _this.page
+					) {
+						_this._changePageActive(target)
+						_this._updataPageAndData(parseInt(target.innerHTML))
+						_this._updateList()
+					}
+				})
+			},
+			_changePageActive: function(pager) {
+				this.pageLocation.getElementsByClassName('pageActive')[0].setAttribute('class', '')
+				pager.setAttribute('class', 'pageActive')
+			},
+			_updateList: function() {
+				this.list.innerHTML = null;
+				this._generateDataItems()
+			},
+			_updatePageLocation: function() {
+				this.pageCount = Math.ceil(this.dataSource.length / this.pageSize);
+				this.pageLocation.innerHTML = null;
+				this._generatePagerItems();
+			},
+			changeDataSource: function(dataSource) {
+				this.dataSource = dataSource;
+				this._updataPageAndData(1);
+				this._updateList()
+				this._updatePageLocation()
+			}
+		}
+		var a = new DropDownBox({
+			id: 'dropDownBox',
+			dataSource: ['我是谁', '我从哪来', '要到哪去', '我要干啥']
+		})
+	</script>
+</body>
+</html>
